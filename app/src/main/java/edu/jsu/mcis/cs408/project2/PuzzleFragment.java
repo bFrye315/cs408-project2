@@ -1,12 +1,16 @@
 package edu.jsu.mcis.cs408.project2;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.text.InputType;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -118,10 +122,57 @@ public class PuzzleFragment extends Fragment implements TabFragment {
         if (box != 0) {
             String message = "R" + row + "C" + column + ": #" + box;
             Toast.makeText(getActivity(), message, Toast.LENGTH_SHORT).show();
+            AlertDialog.Builder builder = new AlertDialog.Builder(this.getActivity());
+            builder.setTitle(R.string.dialog_title);
+            builder.setMessage(R.string.dialog_message);
+            final EditText input = new EditText(this.getActivity());
+            input.setInputType(InputType.TYPE_CLASS_TEXT);
+            builder.setView(input);
+            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    String userInput = input.getText().toString().toUpperCase();
+                    boolean isCorrect = model.testWord(row, column, userInput);
+                    if(isCorrect){
+                        updateGrid();
+                        boolean gameOver = model.winCondition();
+                        if (gameOver){
+                            gameOverAlert();
+                        }
+                    }
+                    else {
+                        Toast.makeText(getActivity(), "Incorrect, try again", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+            builder.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+
+                    dialogInterface.cancel();
+                }
+            });
+            builder.create();
+            builder.show();
         }
 
     }
 
+    private void gameOverAlert(){
+        AlertDialog.Builder builder = new AlertDialog.Builder(this.getActivity());
+        builder.setTitle("Game Over");
+        builder.setMessage("Click REPLAY to play again");
+        builder.setPositiveButton("REPLAY", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+
+                model.restart(getContext());
+                updateGrid();
+            }
+        });
+        builder.create();
+        builder.show();
+    }
     /* Methods for Creating Grid */
 
     private void createGridViews() {

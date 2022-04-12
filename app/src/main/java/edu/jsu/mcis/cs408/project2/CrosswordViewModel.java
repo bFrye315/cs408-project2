@@ -3,11 +3,13 @@ package edu.jsu.mcis.cs408.project2;
 import android.content.Context;
 import android.util.Log;
 
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -32,13 +34,18 @@ public class CrosswordViewModel extends ViewModel {
     private final MutableLiveData<String> cluesAcross = new MutableLiveData<>();
     private final MutableLiveData<String> cluesDown = new MutableLiveData<>();
 
+    private DatabaseHandler db;
     // Initialize Shared Model
-
+    public void resume(ArrayList<String> keys){
+        for (String k: keys){
+            addWordToGrid(k);
+        }
+    }
     public void init(Context context) {
-
+        this.db = new DatabaseHandler(context, null, null, 1);
         if (words.getValue() == null) {
             loadWords(context);
-            addAllWordsToGrid(); // for testing only; remove later!
+            //addAllWordsToGrid(); // for testing only; remove later!
         }
 
     }
@@ -63,11 +70,19 @@ public class CrosswordViewModel extends ViewModel {
 
             // Add word to Letters array, one character at a time
 
-            /*
 
-                INSERT YOUR CODE HERE
-
-            */
+            if(word.getDirection().equals(WordDirection.ACROSS)){
+                for (int i = 0; i<word.getWord().length(); i++){
+                    Objects.requireNonNull(letters.getValue())[row][column+i] = w.charAt(i);
+                    Objects.requireNonNull(numbers.getValue())[row][column]= word.getBox();
+                }
+            }
+            else{
+                for (int i = 0; i<word.getWord().length(); i++){
+                    Objects.requireNonNull(letters.getValue())[row+i][column] = w.charAt(i);
+                    Objects.requireNonNull(numbers.getValue())[row][column] = word.getBox();
+                }
+            }
 
         }
 
@@ -147,19 +162,20 @@ public class CrosswordViewModel extends ViewModel {
 
                         // Clear grid squares
 
-                        /*
-
-                            INSERT YOUR CODE HERE
-
-                        */
+                        if(word.getDirection().equals(WordDirection.ACROSS)){
+                            for(int i = 0; i < word.getWord().length();i++){
+                                lArray[row][column+i] = BLANK_CHAR;
+                            }
+                        }
 
                         // Append Clue to StringBuilder (either clueAcrossBuffer or clueDownBuffer)
 
-                        /*
-
-                            INSERT YOUR CODE HERE
-
-                        */
+                        if(word.isAcross()){
+                            clueAcrossBuffer.append(word.getBox()).append(": ").append(word.getClue()).append("\n");
+                        }
+                        else{
+                            clueDownBuffer.append(word.getBox()).append(": ").append(word.getClue()).append("\n");
+                        }
 
                         // Create unique key; add word to collection
 
@@ -187,6 +203,7 @@ public class CrosswordViewModel extends ViewModel {
 
             br.close();
 
+
         }
         catch (Exception e) { Log.e(TAG, e.toString()); }
 
@@ -210,4 +227,52 @@ public class CrosswordViewModel extends ViewModel {
         return Objects.requireNonNull(numbers.getValue())[row][column];
     }
 
+    public boolean testWord(int row, int column, String guess){
+
+        String aKey = numbers.getValue()[row][column] + "A";
+        String dKey = numbers.getValue()[row][column] + "D";
+        String wordA = "";
+        String wordD = "";
+        if(Objects.requireNonNull(words.getValue()).containsKey(aKey)){
+            wordA = Objects.requireNonNull(words.getValue()).get(aKey).getWord();
+        }
+        if(Objects.requireNonNull(words.getValue()).containsKey(dKey)){
+            wordD = Objects.requireNonNull(words.getValue()).get(dKey).getWord();
+        }
+        if(!wordA.isEmpty() && wordA.equals(guess)){
+            addWordToGrid(aKey);
+            db.addKey(Objects.requireNonNull(Objects.requireNonNull(words.getValue()).get(aKey)));
+            return true;
+        }else if(!wordD.isEmpty() && wordD.equals(guess)){
+            addWordToGrid(dKey);
+            db.addKey(Objects.requireNonNull(Objects.requireNonNull(words.getValue()).get(dKey)));
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    public boolean winCondition() {
+        boolean win = false;
+        for (int row = 0; row < letters.getValue().length; ++row) {
+            for (int column = 0; column < letters.getValue().length; ++column) {
+                if (letters.getValue()[row][column] != BLANK_CHAR) {
+                    win = true;
+                } else {
+                    win = false;
+                    break;
+                }
+            }
+            if(!win){
+                break;
+            }
+        }
+        return win;
+    }
+    public void restart(Context context){
+        db.restartTable();
+        loadWords(context);
+
+    }
 }
